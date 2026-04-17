@@ -9,6 +9,15 @@ struct PredictedState {
     Eigen::Quaternionf orientation;
 };
 
+struct CostBreakdown {
+    double lagCost      = 0.0;  // Cl * lag_err²  (along-track tracking)
+    double contourCost  = 0.0;  // Cc * contour   (lateral tracking)
+    double progressCost = 0.0;  // -mu * v_theta  (progress reward, typically negative)
+    double linVelCost   = 0.0;  // Cv * ||vel||²
+    double angVelCost   = 0.0;  // Cr * ||ang_vel||²
+    double obstacleCost = 0.0;  // W_ball_quad * sl²  (soft obstacle constraint)
+};
+
 class Controller {
  public:
   Controller(HardDrone* _hardDrone) : hardDrone(_hardDrone) {};
@@ -41,6 +50,7 @@ class acadosNMPC : public Controller {
    double getLastCost() const { return lastCost; }
 
    const std::vector<PredictedState>& getPredictedTrajectory() const { return predictedTrajectory; }
+   const CostBreakdown& getCostBreakdown() const { return lastCostBreakdown; }
  private:
    Eigen::Vector3f ballCenter{0.0f, 0.0f, 5.0f};
    float ballRadius = 0.01f;   double lastCost = 0.0;   int counter = 0;
@@ -49,10 +59,12 @@ class acadosNMPC : public Controller {
    double currentTheta;
    Eigen::Vector4d lastU;
    quadrotor_mpcc_solver_capsule* capsule;
+   ocp_nlp_solver   *nlp_solver;
    ocp_nlp_config *nlp_config;
    ocp_nlp_dims *nlp_dims;
    ocp_nlp_in *nlp_in;
    ocp_nlp_out *nlp_out;
    std::vector<PredictedState> predictedTrajectory;
+   CostBreakdown lastCostBreakdown;
 
 };

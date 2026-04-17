@@ -12,6 +12,7 @@ acadosNMPC::acadosNMPC(HardDrone *_hardDrone)
     capsule = quadrotor_mpcc_acados_create_capsule();
     quadrotor_mpcc_acados_create(capsule);
 
+    nlp_solver = quadrotor_mpcc_acados_get_nlp_solver(capsule);
     nlp_config = quadrotor_mpcc_acados_get_nlp_config(capsule);
     nlp_dims = quadrotor_mpcc_acados_get_nlp_dims(capsule);
     nlp_out = quadrotor_mpcc_acados_get_nlp_out(capsule);
@@ -116,6 +117,62 @@ void acadosNMPC::control(float dt)
                 Eigen::Quaternionf orientWorld = yaw_q * tiltK;
                 predictedTrajectory.push_back({posWorld, orientWorld});
             }
+
+            // Cost breakdown: replicate each term of the stage cost over the horizon.
+            // circle_path in yaw-normalized frame (mirrors Acados.py circle_path):
+            //   p_ref = [cy*a*sin(θ)+sy*b*cos(θ), -sy*a*sin(θ)+cy*b*cos(θ), 0]
+            //   t_ref = normalise([cy*a*cos(θ)-sy*b*sin(θ), -sy*a*cos(θ)-cy*b*sin(θ), 0])
+            const double a_path = 5.0, b_path = 10.0;
+            const double Cc = 10.0, Cv = 0.75, Cr = 5.0;
+            const double W_ball_quad = 5000.0;
+            const double cy = std::cos((double)yaw), sy = std::sin((double)yaw);
+
+            CostBreakdown cb{};
+            for (int k = 0; k < N; ++k) {
+                double xk[13], uk[5];
+                ocp_nlp_out_get(nlp_config, nlp_dims, nlp_out, k, "x", xk);
+                ocp_nlp_out_get(nlp_config, nlp_dims, nlp_out, k, "u", uk);
+
+                const double theta_k = xk[12];
+                const double px_w =  a_path * std::sin(theta_k);
+                const double py_w =  b_path * std::cos(theta_k);
+                const double tx_w =  a_path * std::cos(theta_k);
+                const double ty_w = -b_path * std::sin(theta_k);
+
+                const double px_ref =  cy * px_w + sy * py_w;
+                const double py_ref = -sy * px_w + cy * py_w;
+                const double tx_r   =  cy * tx_w + sy * ty_w;
+                const double ty_r   = -sy * tx_w + cy * ty_w;
+                const double tnorm  = std::sqrt(tx_r*tx_r + ty_r*ty_r);
+                const double tnx = tx_r / tnorm, tny = ty_r / tnorm;
+
+                const double ex = xk[0] - px_ref;
+                const double ey = xk[1] - py_ref;
+                const double ez = xk[2];  // pz_ref = 0
+                const double lag   = tnx * ex + tny * ey;
+                const double err2  = ex*ex + ey*ey + ez*ez;
+                const double contour = err2 - lag * lag;
+
+                const double alpha   = (double)k / (N > 0 ? N : 1);
+                const double clStage = Cl * (1.0 + 30.0 * alpha*alpha*alpha);
+
+                cb.lagCost      += clStage * lag * lag;
+                cb.contourCost  += Cc * contour;
+                cb.progressCost += -mu * uk[4];
+                cb.linVelCost   += Cv * (xk[3]*xk[3] + xk[4]*xk[4] + xk[5]*xk[5]);
+                cb.angVelCost   += Cr * (xk[9]*xk[9] + xk[10]*xk[10] + xk[11]*xk[11]);
+
+                double sl[1] = {0.0};
+                ocp_nlp_out_get(nlp_config, nlp_dims, nlp_out, k, "sl", sl);
+                cb.obstacleCost += W_ball_quad * sl[0] * sl[0];
+            }
+            // Terminal stage: only obstacle slack (terminal cost expr = 0)
+            {
+                double sl_e[1] = {0.0};
+                ocp_nlp_out_get(nlp_config, nlp_dims, nlp_out, N, "sl", sl_e);
+                cb.obstacleCost += W_ball_quad * sl_e[0] * sl_e[0];
+            }
+            lastCostBreakdown = cb;
         }
     }
     if (counter > 300){

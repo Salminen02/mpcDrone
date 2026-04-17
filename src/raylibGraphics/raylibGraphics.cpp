@@ -1,6 +1,8 @@
 #include "raylibGraphics.hpp"
 #include "iostream"
 #include "rlgl.h"
+#include <cmath>
+#include <algorithm>
 
 #define RAYGUI_IMPLEMENTATION
 #include "../../raylib/examples/core/raygui.h"
@@ -133,6 +135,73 @@ void drawDroneBody(Eigen::Vector3f position, Eigen::Quaternionf orientation, Col
     rlPopMatrix();
 }
 
+// Draw a multi-bar cost breakdown chart.
+// Bars can be positive or negative; they grow up/down from a shared zero baseline.
+static void drawCostBreakdown(int originX, int originY, int w, int h,
+                               const CostBreakdown& cb)
+{
+    const int titleH = 18;
+    const int labelH = 14;
+    const int chartH = h - titleH - labelH - 6;
+    const int chartY = originY + titleH;
+
+    DrawRectangle(originX, originY, w, h, Fade(LIGHTGRAY, 0.80f));
+    DrawRectangleLines(originX, originY, w, h, DARKGRAY);
+    DrawText("Cost Breakdown (sum over horizon)", originX + 6, originY + 2, titleH - 4, DARKGRAY);
+
+    const int   nBars = 6;
+    const char* labels[6] = { "Lag", "Contour", "Progress", "LinVel", "AngVel", "Obstacle" };
+    const double values[6] = {
+        cb.lagCost, cb.contourCost, cb.progressCost,
+        cb.linVelCost, cb.angVelCost, cb.obstacleCost
+    };
+    Color colors[6] = { BLUE, SKYBLUE, GREEN, YELLOW, ORANGE, RED };
+
+    // Scale to the largest absolute value; ensure at least 1 to avoid div-by-zero
+    double maxAbs = 1.0;
+    for (int i = 0; i < nBars; ++i)
+        maxAbs = std::max(maxAbs, std::abs(values[i]));
+
+    const int pad  = 4;
+    const int barW = (w - pad * (nBars + 1)) / nBars;
+
+    // Zero baseline sits at the vertical midpoint of the chart area
+    const int baseline = chartY + chartH / 2;
+    const int halfH    = chartH / 2;
+
+    // Baseline
+    DrawLine(originX, baseline, originX + w, baseline, DARKGRAY);
+
+    for (int i = 0; i < nBars; ++i) {
+        const int bx  = originX + pad + i * (barW + pad);
+        const double v = values[i];
+        const int barPx = std::max(1, (int)(std::abs(v) / maxAbs * halfH));
+
+        int by;
+        Color col = colors[i];
+        if (v >= 0.0) {
+            by = baseline - barPx;
+            DrawRectangle(bx, by, barW, barPx, col);
+            DrawRectangleLines(bx, by, barW, barPx, Fade(BLACK, 0.3f));
+        } else {
+            by = baseline;
+            DrawRectangle(bx, by, barW, barPx, Fade(col, 0.6f));
+            DrawRectangleLines(bx, by, barW, barPx, Fade(BLACK, 0.3f));
+        }
+
+        // Value label
+        const char* valStr = TextFormat("%.0f", v);
+        int         valW   = MeasureText(valStr, 10);
+        int         valY   = (v >= 0.0) ? (by - 12) : (by + barPx + 2);
+        DrawText(valStr, bx + (barW - valW) / 2, valY, 10, DARKGRAY);
+
+        // Category label at very bottom
+        int lblW = MeasureText(labels[i], 9);
+        DrawText(labels[i], bx + (barW - lblW) / 2,
+                 originY + h - labelH, 9, DARKGRAY);
+    }
+}
+
 void RaylibGraphics::cast()
 {
     BeginDrawing();
@@ -237,6 +306,21 @@ void RaylibGraphics::cast()
         DrawText(TextFormat("X:%.1f  Y:%.1f  Z:%.1f  R:%.1f", goalX, goalY, goalZ, ballR), 10, 450, 16, DARKGRAY);
 
         simThread->setGoal(Vector3f{goalX, goalY, goalZ});
+    }
+
+    // Cost breakdown bar charts (one per drone, stacked vertically on the right)
+    {
+        const int chartW = 340;
+        const int chartH = 180;
+        const int marginR = 10;
+        const int marginT = 10;
+        int chartX = screenWidth - chartW - marginR;
+
+        for (size_t i = 0; i < simSnapshot.droneWholeSnapshots.size(); ++i) {
+            const auto& snap = simSnapshot.droneWholeSnapshots[i];
+            int chartY = marginT + (int)i * (chartH + 10);
+            drawCostBreakdown(chartX, chartY, chartW, chartH, snap.costBreakdown);
+        }
     }
 
     EndDrawing();
