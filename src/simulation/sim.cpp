@@ -38,6 +38,7 @@ SimSnapshot Sim::getSnapshot() const
         // Ennustettu reitti kontrollerilta
         if (auto* nmpc = dynamic_cast<acadosNMPC*>(controller)) {
             droneWholeSnapshot.predictedTrajectory = nmpc->getPredictedTrajectory();
+            droneWholeSnapshot.costBreakdown       = nmpc->getCostBreakdown();
         }
     
         simSnapshot.droneWholeSnapshots.push_back(droneWholeSnapshot);

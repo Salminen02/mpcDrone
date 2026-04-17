@@ -24,6 +24,7 @@ struct DroneWholeSnapshot{
   std::tuple<Propeller, Propeller, Propeller, Propeller> fourPropellers;
   DroneBodyFrame bodyFrame;
   std::vector<PredictedState> predictedTrajectory;
+  CostBreakdown costBreakdown;
 };
 
 struct SimSnapshot {
