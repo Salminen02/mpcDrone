@@ -63,9 +63,14 @@ void acadosNMPC::control(float dt)
         ocp_nlp_constraints_model_set(nlp_config, nlp_dims, nlp_in, nlp_out, 0, "lbx", x);
         ocp_nlp_constraints_model_set(nlp_config, nlp_dims, nlp_in, nlp_out, 0, "ubx", x);
 
-        double p[3] = {(double)yaw, mu, Cl};
-        for (int k = 0; k <= N; ++k)
+        const double clEndBoost = 5.0; // 0.0 = no boost, larger = stronger terminal weighting
+        const double denomN = (N > 0) ? static_cast<double>(N) : 1.0;
+        for (int k = 0; k <= N; ++k) {
+            const double alpha = static_cast<double>(k) / denomN;
+            const double clStage = Cl * (1.0 + clEndBoost * alpha * alpha * alpha);
+            double p[3] = {(double)yaw, mu, clStage};
             quadrotor_mpcc_acados_update_params(capsule, k, p, 3);
+        }
 
         int status = quadrotor_mpcc_acados_solve(capsule);
         if (status != 0) {
@@ -101,15 +106,15 @@ void acadosNMPC::control(float dt)
             }
         }
     }
-    if (counter > 1000){
+    if (counter > 100){
         mixer(lastU);
         Cl = 1000;
     }
     else{
         PID(dt);
     }
-    if (counter > 1500){
-        mu = 45;
+    if (counter > 200){
+        mu = 50;
         Cl = 1;
     }
     counter++;
