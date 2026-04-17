@@ -62,6 +62,11 @@ set(SOURCES
     ${ACADOS_GENERATED_DIR}/quadrotor_mpcc_model/quadrotor_mpcc_expl_ode_fun.c
     ${ACADOS_GENERATED_DIR}/quadrotor_mpcc_model/quadrotor_mpcc_expl_vde_forw.c
     ${ACADOS_GENERATED_DIR}/quadrotor_mpcc_model/quadrotor_mpcc_expl_vde_adj.c
+    # Acados constraints
+    ${ACADOS_GENERATED_DIR}/quadrotor_mpcc_constraints/quadrotor_mpcc_constr_h_fun.c
+    ${ACADOS_GENERATED_DIR}/quadrotor_mpcc_constraints/quadrotor_mpcc_constr_h_fun_jac_uxt_zt.c
+    ${ACADOS_GENERATED_DIR}/quadrotor_mpcc_constraints/quadrotor_mpcc_constr_h_e_fun.c
+    ${ACADOS_GENERATED_DIR}/quadrotor_mpcc_constraints/quadrotor_mpcc_constr_h_e_fun_jac_uxt_zt.c
 )
 
 # Merkitään generoidut tiedostot GENERATED jotta cmake ei vaadi niitä konfigurointivaiheessa
@@ -79,6 +84,10 @@ set_source_files_properties(
     ${ACADOS_GENERATED_DIR}/quadrotor_mpcc_model/quadrotor_mpcc_expl_ode_fun.c
     ${ACADOS_GENERATED_DIR}/quadrotor_mpcc_model/quadrotor_mpcc_expl_vde_forw.c
     ${ACADOS_GENERATED_DIR}/quadrotor_mpcc_model/quadrotor_mpcc_expl_vde_adj.c
+    ${ACADOS_GENERATED_DIR}/quadrotor_mpcc_constraints/quadrotor_mpcc_constr_h_fun.c
+    ${ACADOS_GENERATED_DIR}/quadrotor_mpcc_constraints/quadrotor_mpcc_constr_h_fun_jac_uxt_zt.c
+    ${ACADOS_GENERATED_DIR}/quadrotor_mpcc_constraints/quadrotor_mpcc_constr_h_e_fun.c
+    ${ACADOS_GENERATED_DIR}/quadrotor_mpcc_constraints/quadrotor_mpcc_constr_h_e_fun_jac_uxt_zt.c
     PROPERTIES GENERATED TRUE
 )
 

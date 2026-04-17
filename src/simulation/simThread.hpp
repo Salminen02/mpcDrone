@@ -21,6 +21,8 @@ class SimThread {
     void runSim();
     Vector3f getGoal() const {return sim->getGoal();};
     void setGoal(Vector3f xyz){sim->setGoal(xyz);};
+    float getBallRadius() const {return sim->getBallRadius();};
+    void setBallRadius(float r){sim->setBallRadius(r);};
     
     // Thread-safe data access
     SimSnapshot getSimSnapshot() const;

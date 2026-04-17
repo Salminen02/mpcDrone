@@ -52,6 +52,9 @@ class Sim{
   void setGoal(Vector3f xyz){droneGoalxyz = xyz;};
 
   Vector3f getGoal() const { return droneGoalxyz; };
+
+  float getBallRadius() const { return droneGoalRadius; };
+  void setBallRadius(float r){ droneGoalRadius = r; };
   
   // Get controller for UI access
   Controller* getController() const {
@@ -70,6 +73,7 @@ class Sim{
   bool paused = false;
   bool ranOnce = false;
   Eigen::Vector3f droneGoalxyz{0,0,0};
+  float droneGoalRadius = 1.0f;
   Time time;  
   float count = 0;
 };

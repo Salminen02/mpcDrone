@@ -13,6 +13,9 @@ void Sim::updateSimulation(float dt)
             //droneWhole->controller->control(dt);
             droneWhole->controller->control(dt);
             //droneWhole->controller->setGoalX(droneGoalxyz);
+            if (auto* nmpc = dynamic_cast<acadosNMPC*>(droneWhole->controller.get())) {
+                nmpc->setBallConstraint(droneGoalxyz, droneGoalRadius);
+            }
     }
     updateTime(dt);
 }

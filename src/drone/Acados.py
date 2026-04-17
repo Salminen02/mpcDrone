@@ -3,8 +3,8 @@ from acados_template import AcadosModel, AcadosOcp, AcadosOcpSolver
 import casadi as ca
 
 # --- 1. Asetukset ---
-N  = 180
-dt = 0.0075
+N  = 200
+dt = 0.01
 
 # Kopterin fyysiset vakiot
 m, g_accel, L = 0.5, 9.81, 0.3
@@ -19,8 +19,8 @@ model.name = 'quadrotor_mpcc'
 x_sym = ca.SX.sym('x', 13)
 # Ohjausmuuttujat: [T1,T2,T3,T4, v_theta]
 u_sym = ca.SX.sym('u', 5)
-# Parametrit: [yaw_world, mu, Cl]
-p_sym = ca.SX.sym('p', 3)
+# Parametrit: [yaw_world, mu, Cl, ball_cx, ball_cy, ball_cz, ball_r]
+p_sym = ca.SX.sym('p', 7)
 
 model.x = x_sym
 model.u = u_sym
@@ -51,6 +51,7 @@ def eight_path(theta, yaw):
 def circle_path(theta, yaw):
     a = 5.0
     b = 10.0
+    
     px_w = a * ca.sin(theta)
     py_w = b * ca.cos(theta)
     pz_w = 0.0
@@ -110,8 +111,8 @@ model.f_expl_expr = f_expl
 mu = p_sym[1]    # online-parametri, oletusarvo asetetaan parameter_values:ssa
 Cl = p_sym[2]
 Cc = 10
-Cv = 0.01
-Cr = 3
+Cv = 0.75
+Cr = 5
 
 theta_path = x_sym[12]
 p_path, t_norm = circle_path(theta_path, yaw_world)
@@ -126,6 +127,15 @@ stage_cost = (Cl * lag_err**2
 
 model.cost_expr_ext_cost   = stage_cost
 model.cost_expr_ext_cost_e = ca.SX(0)   # terminaalikustannus = 0
+
+# --- 5b. Pallo-este: pehmeä rajoitin slackin kautta (dist² - r² >= 0) ---
+ball_cx = p_sym[3]
+ball_cy = p_sym[4]
+ball_cz = p_sym[5]
+ball_r  = p_sym[6]
+h_ball = (x_sym[0] - ball_cx)**2 + (x_sym[1] - ball_cy)**2 + (x_sym[2] - ball_cz)**2 - ball_r**2
+model.con_h_expr   = h_ball
+model.con_h_expr_e = h_ball
 
 # --- 6. AcadosOcp ---
 ocp = AcadosOcp()
@@ -157,8 +167,30 @@ x0 = np.zeros(13)
 x0[2] = 1.0   # korkeus 1 m
 ocp.constraints.x0 = x0
 
+# Pallo-rajoittimen rajat: h >= 0 (droni pysyy pallon ulkopuolella)
+ocp.constraints.lh   = np.array([0.0])
+ocp.constraints.uh   = np.array([1e9])
+ocp.constraints.lh_e = np.array([0.0])
+ocp.constraints.uh_e = np.array([1e9])
+
+# Pehmeä rajoitin: slack s aktivoituu kun h < 0 (pallo rikotaan)
+# Kustannus: W_ball * s (lineaarinen) + W_ball_quad * s² (kvadraattinen)
+W_ball      = 0.0      # lineaarinen paino
+W_ball_quad = 5000.0   # kvadraattinen paino
+ocp.constraints.idxsh   = np.array([0])  # h-rajoitin 0 on pehmeä
+ocp.constraints.idxsh_e = np.array([0])
+# [zl, zu]: lineaarinen kustannus slack alaspäin / ylöspäin
+ocp.cost.zl   = np.array([W_ball])
+ocp.cost.zu   = np.array([0.0])     # yläraja ei aktivoidu
+ocp.cost.Zl   = np.array([W_ball_quad])
+ocp.cost.Zu   = np.array([0.0])
+ocp.cost.zl_e = np.array([W_ball])
+ocp.cost.zu_e = np.array([0.0])
+ocp.cost.Zl_e = np.array([W_ball_quad])
+ocp.cost.Zu_e = np.array([0.0])
+
 # Online-parametrit
-ocp.parameter_values = np.array([0.0, 30.0, 5.0])   # [yaw_world, mu, Cl]
+ocp.parameter_values = np.array([0.0, 30.0, 5.0, 0.0, 0.0, 5.0, 1.0])   # [yaw_world, mu, Cl, bx, by, bz, br]
 
 # Aika-askel
 ocp.solver_options.tf = N * dt

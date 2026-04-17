@@ -33,8 +33,15 @@ class acadosNMPC : public Controller {
    double mu = 5;
    double Cl = 5;
 
+   void setBallConstraint(Eigen::Vector3f center, float radius) {
+       ballCenter = center;
+       ballRadius = radius;
+   }
+
    const std::vector<PredictedState>& getPredictedTrajectory() const { return predictedTrajectory; }
  private:
+   Eigen::Vector3f ballCenter{0.0f, 0.0f, 5.0f};
+   float ballRadius = 0.01f;
    int counter = 0;
    int N;
    float timeSinceLastSolve;

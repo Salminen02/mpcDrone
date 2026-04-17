@@ -63,13 +63,19 @@ void acadosNMPC::control(float dt)
         ocp_nlp_constraints_model_set(nlp_config, nlp_dims, nlp_in, nlp_out, 0, "lbx", x);
         ocp_nlp_constraints_model_set(nlp_config, nlp_dims, nlp_in, nlp_out, 0, "ubx", x);
 
-        const double clEndBoost = 5.0; // 0.0 = no boost, larger = stronger terminal weighting
+        const double clEndBoost = 30; // 0.0 = no boost, larger = stronger terminal weighting
         const double denomN = (N > 0) ? static_cast<double>(N) : 1.0;
+
+        // Pallon sijainti yaw-normalisoituun kehykseen
+        Eigen::Vector3f ballLocal = inv_yaw_q * ballCenter;
+
         for (int k = 0; k <= N; ++k) {
             const double alpha = static_cast<double>(k) / denomN;
             const double clStage = Cl * (1.0 + clEndBoost * alpha * alpha * alpha);
-            double p[3] = {(double)yaw, mu, clStage};
-            quadrotor_mpcc_acados_update_params(capsule, k, p, 3);
+            double p[7] = {(double)yaw, mu, clStage,
+                           (double)ballLocal.x(), (double)ballLocal.y(), (double)ballLocal.z(),
+                           (double)ballRadius};
+            quadrotor_mpcc_acados_update_params(capsule, k, p, 7);
         }
 
         int status = quadrotor_mpcc_acados_solve(capsule);
@@ -106,7 +112,7 @@ void acadosNMPC::control(float dt)
             }
         }
     }
-    if (counter > 100){
+    if (counter > 300){
         mixer(lastU);
         Cl = 1000;
     }
@@ -114,8 +120,8 @@ void acadosNMPC::control(float dt)
         PID(dt);
     }
     if (counter > 200){
-        mu = 50;
-        Cl = 1;
+        mu = 150;
+        Cl = 0.1;
     }
     counter++;
 }

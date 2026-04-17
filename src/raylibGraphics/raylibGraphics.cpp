@@ -138,16 +138,6 @@ void RaylibGraphics::cast()
     BeginDrawing();
     ClearBackground(RAYWHITE);
     BeginMode3D(camera);
- // Halutut koordinaatit
-    float radiusTop = 0.5f;
-    float radiusBottom = 0.5f;
-    float height = 4.0f;
-    int slices = 16; // Kuinka pyöreä lieriö on
-    float x = 0;
-    float y = 5;
-    Vector3 cylinderPos = { x, -height/2, y };
-
-    DrawCylinder(cylinderPos, radiusTop, radiusBottom, height, slices, BLUE);
 
     // Draw grid and coordinate axes at origin
     DrawGrid(30, 5.0f); // 20x20 ruudukko, ruudun koko 1.0
@@ -182,17 +172,13 @@ void RaylibGraphics::cast()
         }
    }
 
-    // Draw goal position marker
+    // Draw ball obstacle
     {
         Vector3f goal = simThread->getGoal();
-        //Eigen::Quaternionf q_offset(Eigen::AngleAxisf(M_PI / 4.0f, Eigen::Vector3f::UnitZ()));
-        Vector3f goal2 = goal;
-        Vector3 goalRaylib = toRaylib(goal2);
-        DrawSphereWires(goalRaylib, 0.3f, 6, 6, YELLOW);
-        float s = 0.6f;
-        DrawLine3D({goalRaylib.x - s, goalRaylib.y, goalRaylib.z}, {goalRaylib.x + s, goalRaylib.y, goalRaylib.z}, YELLOW);
-        DrawLine3D({goalRaylib.x, goalRaylib.y - s, goalRaylib.z}, {goalRaylib.x, goalRaylib.y + s, goalRaylib.z}, YELLOW);
-        DrawLine3D({goalRaylib.x, goalRaylib.y, goalRaylib.z - s}, {goalRaylib.x, goalRaylib.y, goalRaylib.z + s}, YELLOW);
+        float ballR = simThread->getBallRadius();
+        Vector3 goalRaylib = toRaylib(goal);
+        DrawSphere(goalRaylib, ballR, Fade(RED, 0.5f));
+        DrawSphereWires(goalRaylib, ballR, 8, 8, RED);
     }
 
     EndMode3D();
@@ -239,10 +225,16 @@ void RaylibGraphics::cast()
         }
 
         // ---- Z slider ----
-        GuiGroupBox((Rectangle){ 10, 310, 160, 60 }, "Goal Z");
-        GuiSlider((Rectangle){ 20, 330, 140, 20 }, "0", "20", &goalZ, 0.0f, 20.0f);
+        GuiGroupBox((Rectangle){ 10, 310, 160, 60 }, "Ball Z");
+        GuiSlider((Rectangle){ 20, 330, 140, 20 }, "0", "20", &goalZ, -5.0f, 20.0f);
 
-        DrawText(TextFormat("X:%.1f  Y:%.1f  Z:%.1f", goalX, goalY, goalZ), 10, 380, 16, DARKGRAY);
+        // ---- Ball radius slider ----
+        float ballR = simThread->getBallRadius();
+        GuiGroupBox((Rectangle){ 10, 380, 160, 60 }, "Ball Radius");
+        GuiSlider((Rectangle){ 20, 400, 140, 20 }, "0.5", "5", &ballR, 0.5f, 5.0f);
+        simThread->setBallRadius(ballR);
+
+        DrawText(TextFormat("X:%.1f  Y:%.1f  Z:%.1f  R:%.1f", goalX, goalY, goalZ, ballR), 10, 450, 16, DARKGRAY);
 
         simThread->setGoal(Vector3f{goalX, goalY, goalZ});
     }
