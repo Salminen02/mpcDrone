@@ -93,6 +93,12 @@ void acadosNMPC::control(float dt)
             ocp_nlp_out_get(nlp_config, nlp_dims, nlp_out, 1, "x", x1);
             currentTheta = x1[12];
 
+            // Kokonaiskustannus
+            ocp_nlp_eval_cost(quadrotor_mpcc_acados_get_nlp_solver(capsule), nlp_in, nlp_out);
+            ocp_nlp_get(quadrotor_mpcc_acados_get_nlp_solver(capsule),
+                        "cost_value", &lastCost);
+            std::cout << lastCost << std::endl;
+
             // Tallennetaan ennustettu reitti
             Eigen::Quaternionf yawQ_inv = yaw_q.inverse();
             predictedTrajectory.clear();
