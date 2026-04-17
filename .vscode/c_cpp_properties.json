@@ -1,0 +1,17 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "compileCommands": "${workspaceFolder}/build/compile_commands.json",
+            "includePath": [
+                "${workspaceFolder}/src",
+                "${workspaceFolder}/src/drone/acados/include",
+                "${workspaceFolder}/src/drone/acados/include/**",
+                "${workspaceFolder}/src/drone/c_generated_code",
+                "/usr/include/eigen3"
+            ],
+            "intelliSenseMode": "linux-gcc-x64"
+        }
+    ],
+    "version": 4
+}

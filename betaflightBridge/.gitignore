@@ -1,0 +1,25 @@
+# Build artifacts
+betaflight_bridge
+drone_sim
+*.o
+*.exe
+
+# IDE files
+.vscode/
+.vs/
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Log files
+*.log
+
+# Temporary files
+*~
+*.tmp
+*.swp

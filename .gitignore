@@ -1,0 +1,50 @@
+# Build directories
+/build/
+cmake-build-*/
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+Makefile
+CTestTestfile.cmake
+
+# Binaries and libraries
+*.o
+*.obj
+*.a
+*.so
+*.so.*
+*.dylib
+*.dll
+*.exe
+*.out
+*.app
+
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.venv/
+venv/
+
+# acados generated artifacts
+src/drone/c_generated_code/
+src/drone/nmpc_acados.json
+
+# VS Code and editor files
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/c_cpp_properties.json
+
+# Logs and temp files
+*.log
+*.tmp
+*.swp
+*~
+.DS_Store
