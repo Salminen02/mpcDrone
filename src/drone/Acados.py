@@ -3,7 +3,7 @@ from acados_template import AcadosModel, AcadosOcp, AcadosOcpSolver
 import casadi as ca
 
 # --- 1. Asetukset ---
-N  = 200
+N  = 180
 dt = 0.01
 
 # Kopterin fyysiset vakiot
@@ -120,7 +120,6 @@ lag_err, contour = get_lag_contour(p_path, t_norm, x_sym[0:3])
 
 # acados EXTERNAL cost: skalaari-lauseke
 stage_cost = (Cl * lag_err**2
-            + Cc * contour
             - mu * u_sym[4]
             + Cv * ca.sumsqr(x_sym[3:6])
             + Cr * ca.sumsqr(x_sym[9:12]))
@@ -128,14 +127,11 @@ stage_cost = (Cl * lag_err**2
 model.cost_expr_ext_cost   = stage_cost
 model.cost_expr_ext_cost_e = ca.SX(0)   # terminaalikustannus = 0
 
-# --- 5b. Pallo-este: pehmeä rajoitin slackin kautta (dist² - r² >= 0) ---
-ball_cx = p_sym[3]
-ball_cy = p_sym[4]
-ball_cz = p_sym[5]
-ball_r  = p_sym[6]
-h_ball = (x_sym[0] - ball_cx)**2 + (x_sym[1] - ball_cy)**2 + (x_sym[2] - ball_cz)**2 - ball_r**2
-model.con_h_expr   = h_ball
-model.con_h_expr_e = h_ball
+# --- 5b. Pallo-este: pehmeä rajoitin slackin kautta (r² - dist² >= 0 → drooni pallon sisällä) ---
+e = 3 - contour
+
+model.con_h_expr   = e
+model.con_h_expr_e = e
 
 # --- 6. AcadosOcp ---
 ocp = AcadosOcp()
@@ -167,16 +163,16 @@ x0 = np.zeros(13)
 x0[2] = 1.0   # korkeus 1 m
 ocp.constraints.x0 = x0
 
-# Pallo-rajoittimen rajat: h >= 0 (droni pysyy pallon ulkopuolella)
+# Pallo-rajoittimen rajat: h >= 0 (droni pysyy pallon sisällä)
 ocp.constraints.lh   = np.array([0.0])
 ocp.constraints.uh   = np.array([1e9])
 ocp.constraints.lh_e = np.array([0.0])
 ocp.constraints.uh_e = np.array([1e9])
 
-# Pehmeä rajoitin: slack s aktivoituu kun h < 0 (pallo rikotaan)
+# Pehmeä rajoitin: slack s aktivoituu kun h < 0 (drooni pallon ulkopuolella)
 # Kustannus: W_ball * s (lineaarinen) + W_ball_quad * s² (kvadraattinen)
-W_ball      = 0.0      # lineaarinen paino
-W_ball_quad = 5000.0   # kvadraattinen paino
+W_ball      = 5000.0      # lineaarinen paino
+W_ball_quad = 0.0         # kvadraattinen paino
 ocp.constraints.idxsh   = np.array([0])  # h-rajoitin 0 on pehmeä
 ocp.constraints.idxsh_e = np.array([0])
 # [zl, zu]: lineaarinen kustannus slack alaspäin / ylöspäin

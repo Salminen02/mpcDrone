@@ -120,13 +120,14 @@ void acadosNMPC::control(float dt)
     }
     if (counter > 300){
         mixer(lastU);
+        mu = 1;
         Cl = 1000;
     }
     else{
         PID(dt);
     }
     if (counter > 200){
-        mu = 150;
+        mu = 40;
         Cl = 0.1;
     }
     counter++;
